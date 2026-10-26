@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "ardion",
+  "version": "${version}",
+  "name": "OpenArdion",
+  "description": "OpenArdion is an open-source Fabric client mod for Minecraft 1.21.11, with configurable modules, HUD, music and AI integration.",
+  "authors": [
+    "wzhy233",
+    "Haedus Industries"
+  ],
+  "contact": {
+    "issues": "https://github.com/wzhy233/OpenArdion/issues",
+    "email": "wzhy233@gmail.com",
+    "homepage": "https://github.com/wzhy233/OpenArdion/",
+    "sources": "https://github.com/wzhy233/OpenArdion/"
+  },
+  "license": "MIT",
+  "icon": "assets/ardion/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-datagen": [
+      "io.github.wzhy233.ardion.client.ArdionDataGenerator"
+    ],
+    "client": [
+      "io.github.wzhy233.ardion.client.ArdionClient"
+    ],
+    "main": [
+      "io.github.wzhy233.ardion.Ardion"
+    ]
+  },
+  "mixins": [
+    "ardion.mixins.json",
+    {
+      "config": "ardion.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}

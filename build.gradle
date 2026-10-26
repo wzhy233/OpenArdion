@@ -1,0 +1,297 @@
+plugins {
+    id 'fabric-loom' version '1.16.1'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+tasks.withType(org.gradle.api.tasks.bundling.AbstractArchiveTask).configureEach {
+    archiveVersion.set("")
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    runs {
+        client {
+            vmArg "-Djava.awt.headless=false"
+        }
+    }
+
+    mods {
+        "ardion" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+fabricApi {
+    configureDataGeneration {
+        client = true
+    }
+}
+
+def isWindows = org.gradle.internal.os.OperatingSystem.current().isWindows()
+def isLinux = org.gradle.internal.os.OperatingSystem.current().isLinux()
+def isDesktopBuild = isWindows || isLinux
+def platforms = [
+        'windows-x64': [launcher: 'ardion-agent.exe', engine: 'ardion-engine.exe'],
+        'linux-x64': [launcher: 'ardion-agent', engine: 'ardion-engine']
+]
+def hostPlatform = isWindows ? 'windows-x64' : 'linux-x64'
+def sha256 = { InputStream input ->
+    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    byte[] buffer = new byte[8192]
+    int count
+    while ((count = input.read(buffer)) != -1) digest.update(buffer, 0, count)
+    digest.digest().encodeHex().toString()
+}
+
+def nativePrebuiltDir = layout.projectDirectory.dir("natives/prebuilt/${isWindows ? 'windows-x64' : 'linux-x64'}")
+def nativeAgentFile = nativePrebuiltDir.file(isWindows ? "ardion-agent.exe" : "ardion-agent")
+def nativeGeneratedRoot = layout.buildDirectory.dir("generated/Natives")
+def nativeResourceDir = layout.buildDirectory.dir("generated/Natives/assets/ardion/native")
+
+tasks.register("configureNatives") {
+    doLast {
+        if (!isDesktopBuild || System.getProperty("os.arch") !in ["amd64", "x86_64"]) {
+            throw new GradleException("OpenArdion prebuilt natives support Windows/Linux x64 only.")
+        }
+    }
+}
+
+tasks.register("buildNatives") {
+    dependsOn "configureNatives"
+    doLast {
+        platforms.each { platform, files ->
+            def directory = layout.projectDirectory.dir("natives/prebuilt/${platform}")
+            directory.file("SHA256SUMS").asFile.eachLine { line ->
+                def parts = line.split("  ", 2)
+                def binary = directory.file(parts[1]).asFile
+                if (binary.withInputStream { sha256(it) } != parts[0]) {
+                    throw new GradleException("Native checksum mismatch: ${binary}")
+                }
+            }
+        }
+        if (isLinux && !nativeAgentFile.asFile.setExecutable(true)) {
+            throw new GradleException("Cannot make the prebuilt Linux launcher executable.")
+        }
+    }
+}
+
+tasks.register("buildAgent", Exec) {
+    onlyIf { isDesktopBuild }
+    workingDir = projectDir
+    commandLine(isWindows ? ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "agent/build.ps1"] : ["sh", "agent/build.sh"])
+    inputs.files(fileTree("agent") {
+        exclude "**/node_modules/**", "**/dist/**", "**/.cache/**"
+    })
+    platforms.each { platform, files ->
+        outputs.files(layout.buildDirectory.file("agent/${platform}/${files.engine}"),
+                layout.buildDirectory.file("agent/${platform}/ardion-engine.sha256"))
+    }
+    outputs.files(layout.buildDirectory.file("agent/OPENCODE-LICENSE"),
+            layout.buildDirectory.file("agent/ardion-engine-source.json"))
+}
+
+tasks.register("buildVoyager", Exec) {
+    onlyIf { isDesktopBuild }
+    dependsOn "buildAgent"
+    workingDir = projectDir
+    commandLine(isWindows ? ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "voyager/build.ps1"] : ["sh", "voyager/build.sh"])
+    inputs.files(fileTree("voyager") { exclude "node_modules/**" })
+    outputs.files(layout.buildDirectory.file("agent/voyager-runtime.zip"), layout.buildDirectory.file("agent/voyager-runtime.zip.sha256"))
+}
+
+tasks.register("processNatives", Copy) {
+    onlyIf { isDesktopBuild }
+    dependsOn "buildNatives"
+    doFirst {
+        delete(nativeResourceDir)
+    }
+    if (isDesktopBuild) {
+        dependsOn "buildAgent"
+        dependsOn "buildVoyager"
+        from(nativeAgentFile)
+        from(layout.buildDirectory.dir("agent/${hostPlatform}")) {
+            include platforms[hostPlatform].engine, "ardion-engine.sha256"
+        }
+        from(layout.buildDirectory.dir("agent")) {
+            include "OPENCODE-LICENSE", "ardion-engine-source.json", "voyager-runtime.zip", "voyager-runtime.zip.sha256"
+        }
+    }
+    into(nativeResourceDir)
+    outputs.upToDateWhen { false }
+}
+
+sourceSets {
+    main {
+        resources.srcDir(nativeGeneratedRoot)
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+    maven { url "https://libraries.minecraft.net/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    clientImplementation files("src/client/resources/assets/ardion/skija/skija.jar")
+    clientRuntimeOnly files("src/client/resources/assets/ardion/skija/skija.jar")
+    clientImplementation "io.github.humbleui:types:0.1.1"
+    clientRuntimeOnly "io.github.humbleui:types:0.1.1"
+    include "io.github.humbleui:types:0.1.1"
+    clientImplementation "com.google.zxing:core:3.5.3"
+    include "com.google.zxing:core:3.5.3"
+    clientImplementation "org.luaj:luaj-jse:3.0.1"
+    include "org.luaj:luaj-jse:3.0.1"
+    clientImplementation "org.apache.bcel:bcel:5.2"
+    include "org.apache.bcel:bcel:5.2"
+    implementation "javazoom:jlayer:1.0.1"
+    include "javazoom:jlayer:1.0.1"
+}
+
+processResources {
+    dependsOn "processNatives"
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "loader_version", project.loader_version
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": project.minecraft_version,
+                "loader_version": project.loader_version
+    }
+}
+
+def targetJavaVersion = 21
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        it.options.release.set(targetJavaVersion)
+    }
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    withSourcesJar()
+}
+
+tasks.named("jar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(zipTree("src/client/resources/assets/ardion/skija/skija.jar")) {
+        exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
+        exclude "io/github/humbleui/skija/impl/Cleanable.class"
+        exclude "io/github/humbleui/skija/impl/Library.class"
+    }
+    from("natives/LICENSE.txt") { rename { "OPENARDION-NATIVE-LICENSE.txt" } }
+    from("LICENSE") {
+        rename { "${it}_${project.archives_base_name}"}
+    }
+}
+
+tasks.named("processClientResources") {
+    exclude "assets/ardion/skija/skija.jar"
+}
+
+tasks.named("remapJar") {
+    destinationDirectory.set(layout.buildDirectory.dir("intermediates"))
+    manifest {
+        attributes("Multi-Release": "true")
+    }
+}
+
+tasks.named("sourcesJar") {
+    dependsOn "processNatives"
+}
+
+def platformPackages = platforms.collect { platform, files ->
+    tasks.register(platform == 'windows-x64' ? 'packageWindows' : 'packageLinux', Zip) {
+        dependsOn 'remapJar', 'buildNatives', 'buildAgent', 'buildVoyager'
+        archiveBaseName.set(project.archives_base_name)
+        archiveClassifier.set(platform)
+        archiveExtension.set('jar')
+        destinationDirectory.set(layout.buildDirectory.dir('libs'))
+        from({ zipTree(tasks.named('remapJar').get().archiveFile.get().asFile) }) {
+            exclude 'assets/ardion/native/**'
+        }
+        into('assets/ardion/native') {
+            from("natives/prebuilt/${platform}") { include files.launcher }
+            from(layout.buildDirectory.dir("agent/${platform}")) { include files.engine, 'ardion-engine.sha256' }
+            from(layout.buildDirectory.dir('agent')) {
+                include 'OPENCODE-LICENSE', 'ardion-engine-source.json', 'voyager-runtime.zip', 'voyager-runtime.zip.sha256'
+            }
+        }
+    }
+}
+
+tasks.register('verifyPlatformJars') {
+    dependsOn platformPackages
+    doLast {
+        platforms.each { platform, files ->
+            def archive = new java.util.zip.ZipFile(layout.buildDirectory.file("libs/${project.archives_base_name}-${platform}.jar").get().asFile)
+            try {
+                def prefix = 'assets/ardion/native/'
+                ['windows_x64.dll', 'linux_x64.so'].each { obsolete ->
+                    if (archive.getEntry(prefix + obsolete) != null) throw new GradleException("Obsolete IRC JNI library in ${platform} JAR")
+                }
+                def hashes = [
+                        (files.launcher): file("natives/prebuilt/${platform}/${files.launcher}").withInputStream { sha256(it) },
+                        (files.engine): file("build/agent/${platform}/ardion-engine.sha256").text.trim(),
+                        'voyager-runtime.zip': file('build/agent/voyager-runtime.zip.sha256').text.trim()
+                ]
+                hashes.each { name, expected ->
+                    def entry = archive.getEntry(prefix + name)
+                    if (entry == null || archive.getInputStream(entry).withCloseable { sha256(it) } != expected) {
+                        throw new GradleException("Missing or corrupt ${platform} resource: ${name}")
+                    }
+                }
+                def bundledHash = archive.getInputStream(archive.getEntry(prefix + 'ardion-engine.sha256')).withCloseable { it.getText('UTF-8').trim() }
+                def header = archive.getInputStream(archive.getEntry(prefix + files.engine)).withCloseable { it.readNBytes(4).encodeHex().toString() }
+                if (bundledHash != hashes[files.engine] || !(platform == 'windows-x64' ? header.startsWith('4d5a') : header == '7f454c46')) {
+                    throw new GradleException("Wrong engine format or checksum in ${platform} JAR")
+                }
+                platforms.findAll { key, value -> key != platform }.each { other, otherFiles ->
+                    [otherFiles.launcher, otherFiles.engine].each { name ->
+                        if (archive.getEntry(prefix + name) != null) throw new GradleException("Foreign platform resource in ${platform}: ${name}")
+                    }
+                }
+                logger.lifecycle("Verified ${project.archives_base_name}-${platform}.jar")
+            } finally {
+                archive.close()
+            }
+        }
+    }
+}
+
+tasks.named('assemble') { dependsOn platformPackages }
+tasks.named('build') { dependsOn 'verifyPlatformJars' }
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = project.archives_base_name
+            platformPackages.each { artifact(it) }
+            artifact(tasks.named('remapSourcesJar'))
+        }
+    }
+
+    repositories {
+    }
+}
+

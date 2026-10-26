@@ -1,0 +1,140 @@
+.moduleCard {
+  min-width: 0;
+  position: relative;
+  min-height: 120px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  background: var(--card);
+  cursor: pointer;
+  user-select: none;
+  transition: opacity .12s var(--ease), border-color .12s var(--ease), background .12s var(--ease);
+}
+
+.moduleCard:hover {
+  background: var(--card-hover);
+  border-color: var(--line-2);
+}
+
+.moduleCard.selected {
+  border-color: var(--accent);
+}
+
+.moduleCard.entering, .moduleCard.exiting {
+  opacity: 0;
+}
+
+.moduleTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.moduleTop > div:first-child {
+  min-width: 0;
+}
+
+.moduleTitle {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.moduleMeta {
+  margin-top: 4px;
+  color: var(--subtle);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.moduleFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.bindMini {
+  color: var(--subtle);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.moduleSettings {
+  border: 0;
+  background: transparent;
+  padding: 2px 0 2px 8px;
+  color: var(--subtle);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.moduleSettings:hover {
+  color: var(--text);
+}
+
+.toggle {
+  flex-shrink: 0;
+  width: 32px;
+  height: 20px;
+  border: 1px solid var(--line-2);
+  border-radius: 20px;
+  padding: 2px;
+  background: var(--surface-3);
+  cursor: pointer;
+  transition: background .15s var(--ease);
+}
+
+.toggleKnob {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--subtle);
+  transition: transform .15s var(--ease);
+}
+
+.enabled .toggle {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.enabled .toggleKnob {
+  background: #19231d;
+  transform: translateX(12px);
+}
+
+.settingsCard {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+  user-select: auto;
+}
+
+.settingsCard:hover {
+  background: transparent;
+}
+
+.settingsCard .moduleTop {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settingsCard .moduleTitle {
+  font-size: 15px;
+}
+
+.settingsCard .settings {
+  display: block;
+  overflow: visible;
+  padding: 0;
+}
+
+.settingsCard .chip {
+  margin-top: 18px;
+}

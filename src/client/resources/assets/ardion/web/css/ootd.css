@@ -1,0 +1,130 @@
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #05070b;
+  color: var(--text);
+  font-family: "Noto Sans", "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.ootd {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #05070b;
+}
+
+.skinCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+.skinCanvas.dragging { cursor: grabbing; }
+
+.ootdTopbar {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.identity img {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 10, 15, 0.84);
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.playerName {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  max-width: min(48vw, 420px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.routeLinks {
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.routeLinks a {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(10, 12, 18, 0.62);
+  color: var(--text);
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+}
+
+.routeLinks a:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(18, 22, 30, 0.78);
+}
+
+.textureMeta {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  pointer-events: none;
+}
+
+.textureMeta span {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.62);
+  color: var(--muted);
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}

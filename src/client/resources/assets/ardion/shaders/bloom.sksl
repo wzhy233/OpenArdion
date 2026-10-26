@@ -1,0 +1,10 @@
+uniform shader src;
+uniform shader glow;
+uniform float intensity;
+
+half4 main(float2 coord) {
+    half4 base = src.eval(coord);
+    half4 add  = glow.eval(coord);
+    half3 rgb  = base.rgb + add.rgb * intensity;
+    return half4(rgb, base.a);
+}

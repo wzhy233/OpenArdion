@@ -1,0 +1,10 @@
+uniform shader src;
+uniform float threshold;
+uniform float knee;
+
+half4 main(float2 coord) {
+    half4 c = src.eval(coord);
+    float luma = dot(c.rgb, half3(0.2126, 0.7152, 0.0722));
+    float soft = smoothstep(threshold - knee, threshold + knee, luma);
+    return half4(c.rgb * soft, c.a);
+}

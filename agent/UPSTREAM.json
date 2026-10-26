@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/anomalyco/opencode",
+  "revision": "09e6ddf630b5f2466addf6044b79a60bd48bac03",
+  "license": "MIT",
+  "packages": [
+    "@opencode/ai",
+    "@opencode/cli",
+    "@opencode/client",
+    "@opencode/codemode",
+    "@opencode/core",
+    "@opencode/http-recorder",
+    "@opencode/httpapi-codegen",
+    "@opencode/latex",
+    "@opencode/merman",
+    "@opencode/plugin",
+    "@opencode/plugin-browser",
+    "@opencode/protocol",
+    "@opencode/schema",
+    "@opencode/script",
+    "@opencode/server",
+    "@opencode/simulation",
+    "@opencode/theme",
+    "@opencode/tui",
+    "@opencode/ui",
+    "@opencode/util"
+  ]
+}

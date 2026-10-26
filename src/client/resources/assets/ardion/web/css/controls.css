@@ -1,0 +1,116 @@
+.setting {
+  min-width: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.setting label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.setting label > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.setting label > span + span {
+  color: var(--subtle);
+  font-size: 12px;
+  text-align: right;
+}
+
+.setting input[type="text"], .setting input[type="number"], .setting select, .aiField input, .aiField select, .providerRow select {
+  min-width: 0;
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 10px;
+}
+
+.setting select option, .aiForm select option {
+  background: var(--surface-2);
+}
+
+.range {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.colorInput {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  padding: 3px;
+  cursor: pointer;
+}
+
+.boolButton {
+  height: 32px;
+  min-width: 84px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--subtle);
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.boolButton:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.boolButton.on {
+  color: var(--accent-2);
+  background: #27352d;
+  border-color: #4c6657;
+}
+
+.settingsCard .setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 44%);
+  align-items: center;
+  gap: 24px;
+}
+
+.settingsCard .setting label {
+  margin: 0;
+}
+
+.settingsCard .boolButton {
+  justify-self: end;
+}
+
+.modelList .chip {
+  margin-top: 8px;
+}
+
+.modelRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.modelRow + .modelRow {
+  margin-top: 8px;
+}
+
+button:disabled {
+  opacity: .45;
+  cursor: default;
+}

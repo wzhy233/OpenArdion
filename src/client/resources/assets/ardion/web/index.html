@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenArdion</title>
+  <link rel="icon" href="/icon.png">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/sidebar.css">
+  <link rel="stylesheet" href="/css/cards.css">
+  <link rel="stylesheet" href="/css/inspector.css">
+  <link rel="stylesheet" href="/css/controls.css">
+  <link rel="stylesheet" href="/css/animations.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+  <div class="loader" id="loader">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="loaderText" id="loaderText">Connecting to OpenArdion</div>
+  </div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <img class="brandIcon" src="/icon.png" alt="OpenArdion">
+        <div>
+          <div class="brandName">OpenArdion</div>
+        </div>
+      </div>
+
+      <nav class="primaryNav" aria-label="Pages">
+        <a class="navButton" href="/modules" data-route="/modules">Modules</a>
+        <a class="navButton" href="/models" data-route="/models">Models</a>
+        <a class="navButton" href="/settings" data-route="/settings">Settings</a>
+      </nav>
+      <div class="navLabel">Categories</div>
+      <nav class="nav" id="nav" aria-label="Categories"></nav>
+
+      <div class="sidebarHint">Localhost · 23333</div>
+
+      <div class="playerCard">
+        <img id="head" alt="Player head">
+        <div class="playerMeta">
+          <div id="pname">Player</div>
+          <span id="sessionState">checking session</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">Modules</h1>
+          <p id="pageDescription">Manage modules and their settings.</p>
+        </div>
+        <div class="connection" id="status">offline</div>
+      </header>
+
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search modules…" aria-label="Search modules">
+        <button class="chip" id="clearSearch" type="button">Clear</button>
+        <span class="modelsStatus" id="modelsStatus" hidden></span>
+      </div>
+
+      <section class="moduleGrid" id="grid"></section>
+    </main>
+
+    <aside class="inspector" id="details">
+      <div class="emptyState">Right-click a module to edit bind and settings.</div>
+    </aside>
+  </div>
+
+  <div class="version" id="version">OpenArdion</div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

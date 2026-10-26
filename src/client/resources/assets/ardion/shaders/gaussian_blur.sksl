@@ -1,0 +1,20 @@
+uniform shader src;
+uniform float2 direction;
+uniform float  radius;
+
+const int MAX_R = 24;
+
+half4 main(float2 coord) {
+    float sigma = max(radius * 0.5, 0.0001);
+    float twoSigSq = 2.0 * sigma * sigma;
+    half4 sum = half4(0);
+    float total = 0.0;
+    for (int i = -MAX_R; i <= MAX_R; ++i) {
+        float fi = float(i);
+        if (abs(fi) > radius) continue;
+        float w = exp(-fi * fi / twoSigSq);
+        sum += w * src.eval(coord + fi * direction);
+        total += w;
+    }
+    return sum / total;
+}

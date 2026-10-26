@@ -1,0 +1,15 @@
+# 项目排除路径
+/.gradle/
+/build/
+/run/
+/.codex/
+/.claude/
+/agent/node_modules/
+/agent/**/node_modules/
+/agent/**/dist/
+/agent/**/.cache/
+/agent/**/.bun-cache/
+/voyager/node_modules/
+/voyager/collectblock/index.mjs
+/.idea/
+/logs/

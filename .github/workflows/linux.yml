@@ -1,0 +1,35 @@
+name: Windows and Linux release
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+
+jobs:
+  linux-x64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build and verify Windows and Linux JARs
+        run: sh gradlew build --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenArdion-Windows-Linux-x64
+          path: |
+            build/libs/OpenArdion-windows-x64.jar
+            build/libs/OpenArdion-linux-x64.jar

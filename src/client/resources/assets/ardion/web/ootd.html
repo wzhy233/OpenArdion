@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OOTD</title>
+  <link rel="icon" href="/icon.png">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/ootd.css">
+  <script src="/js/vendor/skinview3d.bundle.js"></script>
+</head>
+<body>
+  <main class="ootd">
+    <canvas id="skinCanvas" class="skinCanvas" aria-label="OOTD"></canvas>
+
+    <header class="ootdTopbar">
+      <div class="identity">
+        <img src="/icon.png" alt="Ardion">
+        <div>
+          <div class="title">OOTD</div>
+          <div class="playerName" id="playerName">Loading player</div>
+        </div>
+      </div>
+      <nav class="routeLinks" aria-label="routes">
+        <a href="/modules">Modules</a>
+        <a href="/settings">Settings</a>
+      </nav>
+    </header>
+
+    <div class="textureMeta">
+      <span id="status">Connecting</span>
+      <span id="capeState">Cape pending</span>
+    </div>
+  </main>
+
+  <script type="module" src="/js/ootd.js"></script>
+</body>
+</html>
