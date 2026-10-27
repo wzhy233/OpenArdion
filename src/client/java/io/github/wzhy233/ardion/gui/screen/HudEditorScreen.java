@@ -9,13 +9,15 @@ import io.github.wzhy233.ardion.module.impl.combat.TriggerBot;
 import io.github.wzhy233.ardion.module.impl.render.HUD;
 import io.github.wzhy233.ardion.module.manager.ModuleManager;
 import io.github.wzhy233.ardion.util.render.Fonts;
-import io.github.wzhy233.ardion.util.render.GuiRenderUtil;
+import io.github.wzhy233.ardion.gui.hud.HudPaint;
+import io.github.wzhy233.ardion.gui.listed.ImplScreen;
+import io.github.wzhy233.ardion.gui.shader.Effects;
+import io.github.wzhy233.ardion.setting.HudSetting;
 import io.github.wzhy233.ardion.util.render.Skia;
 import io.github.wzhy233.ardion.util.render.SkiaRenderManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.text.Text;
@@ -26,17 +28,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.AnimatedScreen {
-    private static final int PANEL_WIDTH = 188;
     private static final float SNAP_DISTANCE = 6.0F;
-    private static final float CONTEXT_WIDTH = 154.0F;
-    private static final float CONTEXT_ROW_HEIGHT = 24.0F;
-    private float panelX = 18.0F;
-    private float panelY = 18.0F;
-    private float panelXTarget = 18.0F;
-    private float panelYTarget = 18.0F;
-    private boolean draggingPanel = false;
-    private float panelDragOffsetX;
-    private float panelDragOffsetY;
+    private static final float CONTEXT_WIDTH = 120.0F;
+    private static final float CONTEXT_ROW_HEIGHT = ImplScreen.moduleHeight;
+    private ElementState contextElement;
 
     private final List<ElementState> elements = new ArrayList<>();
     private ElementState selected;
@@ -49,10 +44,8 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
     private float dragOffsetY;
     private float resizeStartMouseX;
     private float resizeStartScale;
-    private long lastUpdate;
     private final SkiaRenderManager skia = SkiaRenderManager.get();
     private final List<GuideLine> guideLines = new ArrayList<>();
-    private static final float MOVE_SPEED = 0.2F;
 
     public HudEditorScreen() {
         super(Text.literal("HUD Editor"));
@@ -68,7 +61,9 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
             elements.add(new ElementState("Info", hud::isInfoVisible, hud::setInfoVisible, hud::resetInfo));
             elements.add(new ElementState("TargetHUD", hud::isTargetHudVisible, hud::setTargetHudVisible, hud::resetTargetHud));
         }
-        if (!elements.isEmpty()) selected = elements.get(0);
+        selected = dragging = resizing = contextElement = null;
+        contextOpen = false;
+        guideLines.clear();
     }
 
     @Override
@@ -78,12 +73,9 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
 
     @Override
     protected void renderUi(DrawContext context, int mouseX, int mouseY, float delta) {
-        updateAnimations();
         if (!skia.renderNow(context, canvas -> {
-            drawScreenScrim(width, height);
             renderElements(context);
             renderSkijaOutlines(canvas);
-            renderSkijaPanel(canvas, mouseX, mouseY);
             renderContextMenu(mouseX, mouseY);
         })) renderSkijaFailure(context);
 
@@ -91,19 +83,8 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
 
     private void renderSkijaFailure(DrawContext context) {
         context.fill(0, 0, width, height, 0xD80B0E16);
-        context.drawTextWithShadow(textRenderer, "Ardion Skija HUD editor failed", 20, 20, 0xFFFF6B6B);
+        context.drawTextWithShadow(textRenderer, "OpenArdion Skija HUD editor failed", 20, 20, 0xFFFF6B6B);
         context.drawTextWithShadow(textRenderer, skia.failureReason(), 20, 36, 0xFFFFFFFF);
-        context.drawTextWithShadow(textRenderer, "Old HUD editor fallback is disabled so this failure is visible.", 20, 52, 0xFFB8C0D0);
-    }
-
-    private void updateAnimations() {
-        long now = System.currentTimeMillis();
-        int deltaTime = (int) Math.max(0L, now - lastUpdate);
-        lastUpdate = now;
-        if (deltaTime > 100) deltaTime = 16;
-        float factor = Math.min(1.0F, deltaTime * MOVE_SPEED * 0.06F);
-        panelX += (panelXTarget - panelX) * factor;
-        panelY += (panelYTarget - panelY) * factor;
     }
 
     private void renderElements(DrawContext context) {
@@ -126,22 +107,15 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
                 }
             }
 
-            if (element.bounds != null) {
-                if (!skia.isUsable()) {
-                    int color = element == selected ? 0xCC3698EC : 0x88FFFFFF;
-                    drawOutline(context, element.bounds, color);
-                    GuiRenderUtil.drawRoundedRect(context, element.bounds.x + element.bounds.width - 7.0F, element.bounds.y + element.bounds.height - 7.0F, 7.0F, 7.0F, 2.0F, color);
-                }
-            }
         }
     }
 
     private void renderSkijaOutlines(Canvas canvas) {
         for (GuideLine guideLine : guideLines) {
             if (guideLine.vertical()) {
-                Skia.drawRect(guideLine.position() - 0.5F, 0.0F, 1.0F, height, color(0xAA4DA3FF));
+                Skia.drawRect(guideLine.position() - 0.5F, 0.0F, 1.0F, height, color(ImplScreen.getComponentColor(0)));
             } else {
-                Skia.drawRect(0.0F, guideLine.position() - 0.5F, width, 1.0F, color(0xAA4DA3FF));
+                Skia.drawRect(0.0F, guideLine.position() - 0.5F, width, 1.0F, color(ImplScreen.getComponentColor(0)));
             }
         }
 
@@ -152,12 +126,6 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
                 float active = ui.value("outline-selected:" + element.name, element == selected ? 1 : 0,
                         io.github.wzhy233.ardion.gui.ui.UiManager.INTERACTION_MS);
                 drawSkiaOutline(element.bounds.x, element.bounds.y, element.bounds.width, element.bounds.height, active);
-                if (active > 0) {
-                    try (var marker = new io.github.wzhy233.ardion.gui.ui.UiLayer(canvas, null, active)) {
-                        fillRound(element.bounds.x + element.bounds.width - 11.0F, element.bounds.y + element.bounds.height - 11.0F, 11.0F, 11.0F, 4.0F, 0xFFEDF5FF);
-                        fillRound(element.bounds.x + element.bounds.width - 8.0F, element.bounds.y + element.bounds.height - 8.0F, 5.0F, 5.0F, 2.5F, 0xFF35D8FF);
-                    }
-                }
             }
         }
     }
@@ -166,95 +134,48 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
         float opacity = ui.visible("context-menu", contextOpen);
         if (opacity == 0) return;
         try (var ignored = new io.github.wzhy233.ardion.gui.ui.UiLayer(Skia.getCanvas(), null, opacity)) {
-
-        float menuHeight = 10.0F + elements.size() * CONTEXT_ROW_HEIGHT;
-        float x = MathHelper.clamp(contextX, 4.0F, width - CONTEXT_WIDTH - 4.0F);
-        float y = MathHelper.clamp(contextY, 4.0F, height - menuHeight - 4.0F);
-        drawGlassPanel(x, y, CONTEXT_WIDTH, menuHeight, 12.0F);
-
-        float rowY = y + 5.0F;
-        for (ElementState element : elements) {
-            boolean hover = mouseX >= x + 5.0F && mouseX <= x + CONTEXT_WIDTH - 5.0F
-                    && mouseY >= rowY && mouseY <= rowY + CONTEXT_ROW_HEIGHT;
-            float emphasis = ui.hover("context:" + element.name, hover);
-            if (emphasis > 0 || element == selected) {
-                Skia.drawRoundedRect(x + 5.0F, rowY + 2.0F, CONTEXT_WIDTH - 10.0F, CONTEXT_ROW_HEIGHT - 4.0F, 7.0F,
-                        color(io.github.wzhy233.ardion.gui.ui.UiManager.mix(element == selected ? 0x244DA3FF : 0x00FFFFFF, 0x3AFFFFFF, emphasis)));
+            float menuHeight = contextHeight();
+            float x = contextLeft();
+            float y = contextTop();
+            float radius = 5.0F;
+            if (HudSetting.blur()) {
+                Skia.save();
+                try {
+                    Skia.clip(x, y, CONTEXT_WIDTH, menuHeight, radius);
+                    Rect bounds = Rect.makeXYWH(x, y, CONTEXT_WIDTH, menuHeight);
+                    if (HudSetting.blurSksl()) {
+                        Effects.blurBackdropSKSL(Skia.getCanvas(), Skia.getSurface(), bounds,
+                                HudSetting.blurSigma(), HudSetting.skslShader());
+                    } else {
+                        Effects.blurBackdrop(Skia.getCanvas(), bounds, HudSetting.blurSigma());
+                    }
+                } finally { Skia.restore(); }
             }
-            Skia.drawCircle(x + 17.0F, rowY + 12.0F, 3.5F, color(element.visible() ? 0xFF34C759 : 0xFF8E8E93));
-            text(element.name, x + 28.0F, rowY + 5.0F, 10.5F, 0xFFEFF4FF, false);
-            text(element.visible() ? "On" : "Off", x + CONTEXT_WIDTH - 30.0F, rowY + 5.0F, 10.0F, 0xFF9BA7BD, false);
-            rowY += CONTEXT_ROW_HEIGHT;
+            int alpha = HudSetting.backgroundAlpha();
+            if (alpha > 0 && HudSetting.shadow()) Skia.drawShadow(x, y, CONTEXT_WIDTH, menuHeight, radius);
+            HudPaint.renderHudCard(x, y, CONTEXT_WIDTH, menuHeight, radius, Color.WHITE, alpha);
+            Font font = Fonts.getRegular(14);
+            for (int i = 0; i < contextRows(); i++) {
+                float rowY = y + 3.0F + i * CONTEXT_ROW_HEIGHT;
+                boolean enabled = contextElement == null && elements.get(i).visible();
+                float hover = ui.hover("context:" + (contextElement == null ? "all" : contextElement.name) + i,
+                        contextOpen && contextIndex(mouseX, mouseY) == i);
+                int background = enabled ? ImplScreen.getComponentColor((int) (rowY * 10))
+                        : Math.round(alpha * 0.55F) << 24;
+                Skia.drawRoundedRect(x + 2, rowY + 1, CONTEXT_WIDTH - 4, CONTEXT_ROW_HEIGHT - 2, 3,
+                        color(io.github.wzhy233.ardion.gui.ui.UiManager.mix(background, 0x40FFFFFF, hover)));
+                String label = contextElement == null ? elements.get(i).name : i == 0 ? "Reset" : "Hide";
+                Rect bounds = Skia.getTextBounds(label, font);
+                Skia.drawText(label, x + 5, rowY + (CONTEXT_ROW_HEIGHT - bounds.getHeight()) / 2,
+                        Color.WHITE, font);
+            }
         }
-        }
-    }
-
-    private void renderSkijaPanel(Canvas canvas, int mouseX, int mouseY) {
-        float panelHeight = 64.0F + elements.size() * 38.0F;
-        boolean panelHover = mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH && mouseY >= panelY && mouseY <= panelY + 38.0F;
-        drawGlassPanel(panelX, panelY, PANEL_WIDTH, panelHeight, 22.0F);
-        drawHeader(panelX, panelY, PANEL_WIDTH, 46.0F, 22.0F);
-        float headerHover = ui.hover("panel-header", panelHover);
-        if (headerHover > 0) Skia.drawRoundedRect(panelX + 4.0F, panelY + 4.0F, PANEL_WIDTH - 8.0F,
-                38.0F, 18.0F, color(Math.round(headerHover * 24.0F) << 24 | 0xFFFFFF));
-        text("HUD Editor", panelX + 16.0F, panelY + 10.0F, 17.0F, 0xFFF5F7FF, true);
-
-        float y = panelY + 58.0F;
-        for (ElementState element : elements) {
-            boolean hover = mouseX >= panelX + 12.0F && mouseX <= panelX + PANEL_WIDTH - 12.0F && mouseY >= y && mouseY <= y + 30.0F;
-            float active = ui.value("selected:" + element.name, element == selected ? 1 : 0,
-                    io.github.wzhy233.ardion.gui.ui.UiManager.INTERACTION_MS);
-            float emphasis = ui.hover("element:" + element.name, hover);
-            drawCard(panelX + 12.0F, y, PANEL_WIDTH - 24.0F, 30.0F, active, emphasis);
-            fillRound(panelX + 24.0F, y + 10.0F, 10.0F, 10.0F, 5.0F, element.visible() ? 0xFF35E1C8 : 0xFF6E778A);
-            text(element.name, panelX + 42.0F, y + 8.0F, 11.0F, 0xFFEAF0FF, false);
-            text(element.visible() ? "shown" : "hidden", panelX + PANEL_WIDTH - 58.0F, y + 9.0F, 10.0F, 0xFF9BA7BD, false);
-            y += 38.0F;
-        }
-        text("LMB drag / corner scale", panelX + 16.0F, y + 2.0F, 10.0F, 0xFF9BA7BD, false);
-        text("RMB reset / DEL hide", panelX + 16.0F, y + 15.0F, 10.0F, 0xFF9BA7BD, false);
-    }
-
-    private void drawScreenScrim(int width, int height) {
-        Skia.drawRect(0.0F, 0.0F, width, height, color(0x5A030712));
-        Skia.drawGradientRoundedRect(0.0F, 0.0F, width, height, 0.0F, color(0x422A4DFF), color(0x001A1028));
-    }
-
-    private void drawGlassPanel(float x, float y, float w, float h, float radius) {
-        Skia.drawShadow(x, y, w, h, radius);
-        Skia.drawRoundedRect(x, y, w, h, radius, color(0xD8253041));
-        Skia.drawOutline(x + 0.5F, y + 0.5F, w - 1.0F, h - 1.0F, Math.max(0.0F, radius - 1.0F), 1.0F, color(0x42FFFFFF));
-    }
-
-    private void drawHeader(float x, float y, float w, float h, float radius) {
-        Skia.drawGradientRoundedRect(x, y, w, h, radius, color(0x6CFFFFFF), color(0x1436E6D3));
-        Skia.drawRect(x, y + h - 1.0F, w, 1.0F, color(0x20FFFFFF));
-    }
-
-    private void drawCard(float x, float y, float w, float h, float active, float hover) {
-        int top = io.github.wzhy233.ardion.gui.ui.UiManager.mix(
-                io.github.wzhy233.ardion.gui.ui.UiManager.mix(0x4A273246, 0x42FFFFFF, hover), 0xEA5472FF, active);
-        int bottom = io.github.wzhy233.ardion.gui.ui.UiManager.mix(
-                io.github.wzhy233.ardion.gui.ui.UiManager.mix(0x30111723, 0x22FFFFFF, hover), 0xDA27D6C2, active);
-        Skia.drawGradientRoundedRect(x, y, w, h, 12.0F, color(top), color(bottom));
-        Skia.drawOutline(x, y, w, h, 10.0F, 1.0F,
-                color(io.github.wzhy233.ardion.gui.ui.UiManager.mix(0x18FFFFFF, 0x58FFFFFF, active)));
     }
 
     private void drawSkiaOutline(float x, float y, float w, float h, float active) {
-        int argb = io.github.wzhy233.ardion.gui.ui.UiManager.mix(0xB8FFFFFF, 0xFF35D8FF, active);
-        Skia.drawOutline(x - 2.0F, y - 2.0F, w + 4.0F, h + 4.0F, 6.0F, 1.8F, color(argb));
-        fillRound(x + w - 8.0F, y + h - 8.0F, 8.0F, 8.0F, 3.0F, argb);
-    }
-
-    private void fillRound(float x, float y, float w, float h, float radius, int argb) {
-        Skia.drawRoundedRect(x, y, w, h, radius, color(argb));
-    }
-
-    private void text(String value, float x, float y, float size, int argb, boolean medium) {
-        Font font = medium ? Fonts.getMedium(size * 2.0F) : Fonts.getRegular(size * 2.0F);
-        Rect bounds = Skia.getTextBounds(value, font);
-        Skia.drawText(value, x, y - bounds.getTop(), color(argb), font);
+        int argb = io.github.wzhy233.ardion.gui.ui.UiManager.mix(0x60FFFFFF, ImplScreen.getComponentColor(0), active);
+        Skia.drawOutline(x - 1, y - 1, w + 2, h + 2, 3, 1, color(argb));
+        Skia.drawRoundedRect(x + w - 5, y + h - 5, 5, 5, 1, color(argb));
     }
 
     private static Color color(int argb) {
@@ -269,41 +190,19 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
         int button = click.button();
 
         if (contextOpen && button == 0) {
-            int contextIndex = contextIndex(mouseX, mouseY);
-            if (contextIndex >= 0) {
-                ElementState element = elements.get(contextIndex);
-                selected = element;
-                element.setVisible(!element.visible());
-                contextOpen = false;
+            int index = contextIndex(mouseX, mouseY);
+            if (index >= 0) {
+                if (contextElement == null) {
+                    selected = elements.get(index);
+                    selected.setVisible(!selected.visible());
+                } else if (index == 0) {
+                    contextElement.reset();
+                } else {
+                    contextElement.setVisible(false);
+                }
                 ConfigManager.save();
-                return true;
             }
             contextOpen = false;
-        }
-
-        float panelHeight = 64.0F + elements.size() * 38.0F;
-        if (mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH
-                && mouseY >= panelY && mouseY <= panelY + panelHeight) {
-            if (button == 0 && mouseY <= panelY + 46.0F) {
-                draggingPanel = true;
-                panelDragOffsetX = (float) mouseX - panelX;
-                panelDragOffsetY = (float) mouseY - panelY;
-                return true;
-            }
-            for (int i = 0; i < elements.size(); i++) {
-                float rowY = panelY + 58.0F + i * 38.0F;
-                if (mouseX < panelX + 12.0F || mouseX > panelX + PANEL_WIDTH - 12.0F
-                        || mouseY < rowY || mouseY > rowY + 30.0F) continue;
-                ElementState element = elements.get(i);
-                selected = element;
-                if (button == 0) {
-                    element.setVisible(!element.visible());
-                    ConfigManager.save();
-                } else if (button == 1) {
-                    openContextMenu((float) mouseX, (float) mouseY);
-                }
-                return true;
-            }
             return true;
         }
 
@@ -312,7 +211,7 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
             if (!element.visible() || element.bounds == null || !element.bounds.contains(mouseX, mouseY)) continue;
             selected = element;
             if (button == 1) {
-                openContextMenu((float) mouseX, (float) mouseY);
+                openContextMenu((float) mouseX, (float) mouseY, element);
                 return true;
             }
             if (button == 0) {
@@ -330,7 +229,7 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
         }
 
         if (button == 1) {
-            openContextMenu((float) mouseX, (float) mouseY);
+            openContextMenu((float) mouseX, (float) mouseY, null);
             return true;
         }
 
@@ -343,11 +242,7 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
         double mouseX = click.x();
         double mouseY = click.y();
 
-        if (draggingPanel) {
-            panelXTarget = (float) mouseX - panelDragOffsetX;
-            panelYTarget = (float) mouseY - panelDragOffsetY;
-            return true;
-        }
+        if (click.button() != 0) return false;
 
         if (dragging != null) {
             move(dragging, (float) mouseX - dragOffsetX, (float) mouseY - dragOffsetY);
@@ -363,7 +258,7 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
     @Override
     public boolean mouseReleased(Click click) {
         if (!acceptsInput()) return true;
-        draggingPanel = false;
+        if (click.button() != 0) return false;
         dragging = null;
         resizing = null;
         guideLines.clear();
@@ -381,6 +276,10 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
     public boolean keyPressed(KeyInput input) {
         if (!acceptsInput()) return true;
         int keyCode = input.key();
+        if (keyCode == 256 && contextOpen) {
+            contextOpen = false;
+            return true;
+        }
         if (keyCode == 261 && selected != null) {
             selected.setVisible(false);
             ConfigManager.save();
@@ -389,35 +288,36 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
         return super.keyPressed(input);
     }
 
-    private void openContextMenu(float mouseX, float mouseY) {
+    private void openContextMenu(float mouseX, float mouseY, ElementState element) {
+        dragging = resizing = null;
+        guideLines.clear();
+        contextElement = element;
         contextOpen = true;
         contextX = mouseX;
         contextY = mouseY;
     }
 
-    private int contextIndex(double mouseX, double mouseY) {
-        if (!contextOpen) return -1;
-        float menuHeight = 10.0F + elements.size() * CONTEXT_ROW_HEIGHT;
-        float x = MathHelper.clamp(contextX, 4.0F, width - CONTEXT_WIDTH - 4.0F);
-        float y = MathHelper.clamp(contextY, 4.0F, height - menuHeight - 4.0F);
-        if (mouseX < x + 5.0F || mouseX > x + CONTEXT_WIDTH - 5.0F) return -1;
-        float rowY = y + 5.0F;
-        for (int i = 0; i < elements.size(); i++) {
-            if (mouseY >= rowY && mouseY <= rowY + CONTEXT_ROW_HEIGHT) return i;
-            rowY += CONTEXT_ROW_HEIGHT;
-        }
-        return -1;
+    private int contextRows() {
+        return contextElement == null ? elements.size() : 2;
     }
 
-    private int panelIndex(double mouseX, double mouseY) {
-        int y = (int) (panelY + 58.0F);
-        for (int i = 0; i < elements.size(); i++) {
-            if (mouseX >= panelX + 12.0F && mouseX <= panelX + PANEL_WIDTH - 12.0F && mouseY >= y && mouseY <= y + 30.0F) {
-                return i;
-            }
-            y += 38;
-        }
-        return -1;
+    private float contextHeight() {
+        return 6 + contextRows() * CONTEXT_ROW_HEIGHT;
+    }
+
+    private float contextLeft() {
+        return MathHelper.clamp(contextX, 0, Math.max(0, width - CONTEXT_WIDTH));
+    }
+
+    private float contextTop() {
+        return MathHelper.clamp(contextY, 0, Math.max(0, height - contextHeight()));
+    }
+
+    private int contextIndex(double mouseX, double mouseY) {
+        if (!contextOpen || mouseX < contextLeft() + 2 || mouseX >= contextLeft() + CONTEXT_WIDTH - 2) return -1;
+        double offset = mouseY - contextTop() - 3;
+        if (offset < 0 || offset >= contextRows() * CONTEXT_ROW_HEIGHT) return -1;
+        return (int) (offset / CONTEXT_ROW_HEIGHT);
     }
 
     private void move(ElementState element, float x, float y) {
@@ -550,13 +450,6 @@ public final class HudEditorScreen extends io.github.wzhy233.ardion.gui.ui.Anima
             return living;
         }
         return null;
-    }
-
-    private static void drawOutline(DrawContext context, ElementBox box, int color) {
-        context.fill((int) box.x, (int) box.y, (int) (box.x + box.width), (int) box.y + 1, color);
-        context.fill((int) box.x, (int) (box.y + box.height) - 1, (int) (box.x + box.width), (int) (box.y + box.height), color);
-        context.fill((int) box.x, (int) box.y, (int) box.x + 1, (int) (box.y + box.height), color);
-        context.fill((int) (box.x + box.width) - 1, (int) box.y, (int) (box.x + box.width), (int) (box.y + box.height), color);
     }
 
     private record ElementBox(float x, float y, float width, float height) {
